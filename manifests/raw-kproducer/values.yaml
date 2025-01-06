@@ -1,0 +1,38 @@
+﻿replicaCount: 1
+
+image:
+  name: phucapps/raw-kproducer
+  tag: v1.0.0
+  pullSecret: ""
+
+service:
+  type: ClusterIP
+  port: 5000
+
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  labels: {}
+
+web:
+  aspEnvironment: Production
+  containerPort: 5000
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: eks.amazonaws.com/compute-type
+              operator: In
+              values:
+                - hybrid
+
+otlpExporter:
+  enabled: false
+  endpoint: ""
+
+kafka:
+  endpoint: ""
+  rawTopic: raw-data
+  sleepTimeInMilliseconds: 1000

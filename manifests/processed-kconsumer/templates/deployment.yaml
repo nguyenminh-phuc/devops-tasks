@@ -1,0 +1,84 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "processed-kconsumer.fullname" . }}
+  labels:
+    {{- include "processed-kconsumer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "processed-kconsumer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "processed-kconsumer.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "processed-kconsumer.serviceAccountName" . }}
+      {{- if .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      {{- end }}
+      containers:
+        - name: admin
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.web.containerPort }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: web
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: web
+            initialDelaySeconds: 10
+          env:
+            - name: CONTAINER_MODE
+              value: "true"
+            - name: SERVICE_VERSION
+              value: {{ .Values.image.tag | quote }}
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.web.aspEnvironment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://*:{{ .Values.web.containerPort }}/"
+            {{- if .Values.otlpExporter.endpoint }}
+            - name: OTLP_ENABLED
+              value: "true"
+            - name: OTLP_ENDPOINT
+              value: {{ .Values.otlpExporter.endpoint | quote }}
+            {{- end }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.s3.accessKeyId | quote }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.s3.secretAccessKey | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.s3.region | quote }}
+            {{- if .Values.s3.endpoint }}
+            - name: AWS_ENDPOINT_URL
+              value: {{ .Values.s3.endpoint | quote }}
+            {{- end }}
+            - name: BUCKET
+              value: {{ .Values.s3.bucket | quote }}
+            - name: KAFKA_ENDPOINT
+              value: {{ .Values.kafka.endpoint | quote }}
+            - name: KAFKA_PROCESSED_TOPIC
+              value: {{ .Values.kafka.processedTopic | quote }}
+            - name: KAFKA_PROCESSED_GROUP
+              value: {{ .Values.kafka.processedGroup | quote }}
+            - name: POSTGRESQL_SERVER
+              value: {{ printf "%s-postgresql" (include "processed-kconsumer.fullname" .) | quote }}
+            - name: POSTGRESQL_PORT
+              value: {{ .Values.postgresql.primary.service.ports.postgresql | quote }}
+            - name: POSTGRESQL_USER
+              value: "postgres"
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: postgres-password
+      {{- if .Values.affinity }}
+      affinity: {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}

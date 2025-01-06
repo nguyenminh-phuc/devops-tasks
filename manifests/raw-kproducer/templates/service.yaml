@@ -1,0 +1,16 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "raw-kproducer.fullname" . }}
+  labels:
+    {{- include "raw-kproducer.labels" . | nindent 4 }}
+    {{- include "raw-kproducer.metricLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "raw-kproducer.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type }}
+  ports:
+    - name: web
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: web

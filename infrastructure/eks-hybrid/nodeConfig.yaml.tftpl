@@ -1,0 +1,10 @@
+apiVersion: node.eks.aws/v1alpha1
+kind: NodeConfig
+spec:
+  cluster:
+    name: ${cluster_name}
+    region: ${cluster_region}
+  hybrid:
+    ssm:
+      activationCode: ${ssm_activation_code}
+      activationId: ${ssm_activation_id}

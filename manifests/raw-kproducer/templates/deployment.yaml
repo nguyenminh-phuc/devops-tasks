@@ -1,0 +1,72 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "raw-kproducer.fullname" . }}
+  labels:
+    {{- include "raw-kproducer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "raw-kproducer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "raw-kproducer.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "raw-kproducer.serviceAccountName" . }}
+      {{- if .Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.image.pullSecret }}
+      {{- end }}
+      containers:
+        - name: admin
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.web.containerPort }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: web
+            initialDelaySeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: web
+            initialDelaySeconds: 5
+          env:
+            - name: CONTAINER_MODE
+              value: "true"
+            - name: SERVICE_VERSION
+              value: {{ .Values.image.tag | quote }}
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.web.aspEnvironment | quote }}
+            - name: ASPNETCORE_URLS
+              value: "http://*:{{ .Values.web.containerPort }}/"
+            {{- if .Values.otlpExporter.endpoint }}
+            - name: OTLP_ENABLED
+              value: "true"
+            - name: OTLP_ENDPOINT
+              value: {{ .Values.otlpExporter.endpoint | quote }}
+            {{- end }}
+            - name: KAFKA_SLEEP_TIME_IN_MS
+              value: {{ .Values.kafka.sleepTimeInMilliseconds | quote }}
+            - name: KAFKA_ENDPOINT
+              value: {{ .Values.kafka.endpoint | quote }}
+            - name: KAFKA_RAW_TOPIC
+              value: {{ .Values.kafka.rawTopic | quote }}
+            - name: POSTGRESQL_SERVER
+              value: {{ printf "%s-postgresql" (include "raw-kproducer.fullname" .) | quote }}
+            - name: POSTGRESQL_PORT
+              value: {{ .Values.postgresql.primary.service.ports.postgresql | quote }}
+            - name: POSTGRESQL_USER
+              value: "postgres"
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: postgres-password
+      {{- if .Values.affinity }}
+      affinity: {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}

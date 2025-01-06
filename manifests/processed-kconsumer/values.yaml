@@ -1,0 +1,68 @@
+﻿replicaCount: 1
+
+image:
+  name: phucapps/processed-kconsumer
+  tag: v1.0.0
+  pullSecret: ""
+
+service:
+  type: ClusterIP
+  port: 5002
+
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  labels: {}
+
+web:
+  aspEnvironment: Production
+  containerPort: 5002
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: eks.amazonaws.com/compute-type
+              operator: In
+              values:
+                - hybrid
+
+otlpExporter:
+  enabled: false
+  endpoint: ""
+
+s3:
+  accessKeyId: ""
+  secretAccessKey: ""
+  region: ap-southeast-1
+  endpoint: ""
+  bucket: ""
+
+kafka:
+  endpoint: ""
+  processedTopic: processed-data
+  processedGroup: processed-group-0
+
+postgresql:
+  architecture: standalone
+  auth:
+    existingSecret: processed-kconsumer-postgresql
+  primary:
+    initdb:
+      scriptsConfigMap: processed-kconsumer-initdb
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: eks.amazonaws.com/compute-type
+                  operator: In
+                  values:
+                    - hybrid
+    resourcesPreset: none
+    persistence:
+      storageClass: longhorn
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenDeleted: Delete

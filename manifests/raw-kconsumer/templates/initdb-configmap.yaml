@@ -1,0 +1,13 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.postgresql.primary.initdb.scriptsConfigMap }}
+  labels:
+    {{- include "raw-kconsumer.labels" . | nindent 4 }}
+data:
+  init.sql: |
+    CREATE TABLE "RawData"
+    (
+      "Id"      SERIAL PRIMARY KEY,
+      "Message" JSONB NOT NULL
+    );

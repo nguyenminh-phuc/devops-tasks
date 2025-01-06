@@ -1,0 +1,42 @@
+# https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html#_install_calico_on_hybrid_nodes
+installation:
+  enabled: true
+  cni:
+    type: Calico
+    ipam:
+      type: Calico
+  calicoNetwork:
+    bgp: Disabled
+    ipPools:
+      - cidr: ${calico_subnet}
+        blockSize: ${calico_block_size}
+        encapsulation: VXLAN
+        natOutgoing: Enabled
+        nodeSelector: eks.amazonaws.com/compute-type == "hybrid"
+  controlPlaneReplicas: 1
+  controlPlaneNodeSelector:
+    eks.amazonaws.com/compute-type: hybrid
+  calicoNodeDaemonSet:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            eks.amazonaws.com/compute-type: hybrid
+  csiNodeDriverDaemonSet:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            eks.amazonaws.com/compute-type: hybrid
+  calicoKubeControllersDeployment:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            eks.amazonaws.com/compute-type: hybrid
+  typhaDeployment:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            eks.amazonaws.com/compute-type: hybrid

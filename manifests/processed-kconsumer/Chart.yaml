@@ -1,0 +1,11 @@
+apiVersion: v2
+name: processed-kconsumer
+description: processed-data consumer
+type: application
+version: 1.0.0
+appVersion: "v1.0.0"
+dependencies:
+  - name: postgresql
+    version: 16.3.5
+    repository: https://charts.bitnami.com/bitnami
+    condition: debug

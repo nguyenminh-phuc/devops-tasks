@@ -1,0 +1,16 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "raw-kconsumer.fullname" . }}
+  labels:
+    {{- include "raw-kconsumer.labels" . | nindent 4 }}
+    {{- include "raw-kconsumer.metricLabels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "raw-kconsumer.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type }}
+  ports:
+    - name: web
+      protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: web

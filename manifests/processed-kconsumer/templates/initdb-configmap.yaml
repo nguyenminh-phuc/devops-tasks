@@ -1,0 +1,21 @@
+﻿apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.postgresql.primary.initdb.scriptsConfigMap }}
+  labels:
+    {{- include "processed-kconsumer.labels" . | nindent 4 }}
+data:
+  init.sql: |
+    CREATE TABLE "FilteredData"
+    (
+      "Id"        SERIAL PRIMARY KEY,
+      "List"      jsonb                    NOT NULL,
+      "Timestamp" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE "AggregatedTemperature"
+    (
+      "Id"          SERIAL PRIMARY KEY,
+      "Temperature" REAL                     NOT NULL,
+      "Timestamp"   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    );

@@ -1,0 +1,62 @@
+﻿replicaCount: 1
+
+image:
+  name: phucapps/raw-kconsumer
+  tag: v1.0.0
+  pullSecret: ""
+
+service:
+  type: ClusterIP
+  port: 5001
+
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  labels: {}
+
+web:
+  aspEnvironment: Production
+  containerPort: 5001
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: eks.amazonaws.com/compute-type
+              operator: In
+              values:
+                - hybrid
+
+otlpExporter:
+  enabled: false
+  endpoint: ""
+
+kafka:
+  endpoint: ""
+  processedTopic: processed-data
+  rawTopic: raw-data
+  rawGroup: raw-group-0
+
+postgresql:
+  architecture: standalone
+  auth:
+    existingSecret: raw-kconsumer-postgresql
+  primary:
+    initdb:
+      scriptsConfigMap: raw-kconsumer-initdb
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: eks.amazonaws.com/compute-type
+                  operator: In
+                  values:
+                    - hybrid
+    resourcesPreset: none
+    persistence:
+      storageClass: longhorn
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenDeleted: Delete

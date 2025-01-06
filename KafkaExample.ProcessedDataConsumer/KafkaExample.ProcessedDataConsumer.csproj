@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <ContainerRepository>processed-kconsumer</ContainerRepository>
+    <ContainerImageTags>v1.0.0;latest</ContainerImageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.301"/>
+    <PackageReference Include="AWSSDK.S3" Version="3.7.411"/>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.11"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2"/>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="9.0.2"/>
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.10.0-beta.1"/>
+    <PackageReference Include="ParquetSharp" Version="16.1.0"/>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KafkaExample.Shared\KafkaExample.Shared.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ContainerPort Include="5002" Type="tcp"/>
+  </ItemGroup>
+
+</Project>
