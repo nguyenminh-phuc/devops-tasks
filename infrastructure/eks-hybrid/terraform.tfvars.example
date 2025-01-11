@@ -1,0 +1,4 @@
+region = "ap-southeast-1"
+
+s3_tf_bucket    = "agileops-tf-states"
+s3_mesh_vpn_key = "mesh-vpn/terraform.tfstate"

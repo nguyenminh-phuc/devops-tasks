@@ -7,13 +7,11 @@ variable "kubeconfig_path" {
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "ap-southeast-1"
 }
 
 variable "s3_tf_bucket" {
   description = "Name of the S3 bucket for Terraform states"
   type        = string
-  default     = "agileops-tf-states"
 }
 
 variable "s3_eks_hybrid_key" {
@@ -22,8 +20,17 @@ variable "s3_eks_hybrid_key" {
   default     = "eks-hybrid/terraform.tfstate"
 }
 
+variable "calico_namespace" {
+  description = "Namespace for Calico services"
+  type        = string
+}
+
 variable "calico_version" {
   description = "Version of Calico to install"
   type        = string
-  default     = "3.29.1"
+}
+
+variable "pod_subnets" {
+  description = "Mapping of node names to their corresponding pod subnets"
+  type        = map(string)
 }

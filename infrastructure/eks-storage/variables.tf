@@ -7,11 +7,9 @@ variable "kubeconfig_path" {
 variable "longhorn_namespace" {
   description = "Namespace for Longhorn services"
   type        = string
-  default     = "longhorn-system"
 }
 
 variable "longhorn_version" {
   description = "Version of Longhorn to install"
   type        = string
-  default     = "1.7.2"
 }

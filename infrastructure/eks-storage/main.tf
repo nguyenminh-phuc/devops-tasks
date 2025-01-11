@@ -6,10 +6,10 @@ resource "kubernetes_namespace" "longhorn" {
 
 resource "helm_release" "longhorn" {
   name       = "longhorn"
-  namespace  = var.longhorn_namespace
   version    = var.longhorn_version
   repository = "https://charts.longhorn.io"
   chart      = "longhorn"
+  namespace  = kubernetes_namespace.longhorn.metadata[0].name
 
   values = [<<EOT
 longhornManager:
@@ -23,6 +23,4 @@ longhornUI:
     eks.amazonaws.com/compute-type: hybrid
 EOT
   ]
-
-  depends_on = [kubernetes_namespace.longhorn]
 }

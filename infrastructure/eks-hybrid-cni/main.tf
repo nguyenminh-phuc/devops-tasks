@@ -9,11 +9,13 @@ data "terraform_remote_state" "eks_hybrid" {
 }
 
 locals {
-  calico_subnet = data.terraform_remote_state.eks_hybrid.outputs.eks_pod_subnet
+  eks_endpoint = data.terraform_remote_state.eks_hybrid.outputs.eks_private_ips[0]
+}
 
-  # By default, Calico uses an IPAM block size of 64 addresses – /26 for IPv4
-  # https://docs.tigera.io/calico/3.29/networking/ipam/change-block-size
-  calico_block_size = 26
+resource "kubernetes_namespace" "calico" {
+  metadata {
+    name = var.calico_namespace
+  }
 }
 
 resource "helm_release" "calico" {
@@ -21,11 +23,12 @@ resource "helm_release" "calico" {
   name       = "calico"
   version    = var.calico_version
   repository = "https://docs.tigera.io/calico/charts"
-  namespace  = "kube-system"
+  namespace  = kubernetes_namespace.calico.metadata[0].name
 
+  # https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html#_install_calico_on_hybrid_nodes
   values = [templatefile("calico.yaml.tftpl", {
-    calico_subnet     = local.calico_subnet
-    calico_block_size = local.calico_block_size
+    pod_subnets  = var.pod_subnets
+    eks_endpoint = local.eks_endpoint
   })]
 }
 

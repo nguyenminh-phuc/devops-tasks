@@ -714,3 +714,4 @@ terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/helm,rider,csharp,visualstudio,visualstudiocode,terraform
 
+infrastructure/eks-hybrid/nodeConfig.yaml

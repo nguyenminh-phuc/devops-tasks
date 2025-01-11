@@ -1,4 +1,3 @@
-# https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html#_install_calico_on_hybrid_nodes
 installation:
   enabled: true
   cni:
@@ -8,11 +7,13 @@ installation:
   calicoNetwork:
     bgp: Disabled
     ipPools:
-      - cidr: ${calico_subnet}
-        blockSize: ${calico_block_size}
-        encapsulation: VXLAN
-        natOutgoing: Enabled
-        nodeSelector: eks.amazonaws.com/compute-type == "hybrid"
+    %{ for condition, subnet in pod_subnets }
+    - cidr: ${subnet}
+      blockSize: 26
+      encapsulation: VXLAN
+      natOutgoing: Enabled
+      nodeSelector: ${condition}
+    %{ endfor }
   controlPlaneReplicas: 1
   controlPlaneNodeSelector:
     eks.amazonaws.com/compute-type: hybrid
@@ -40,3 +41,6 @@ installation:
         spec:
           nodeSelector:
             eks.amazonaws.com/compute-type: hybrid
+kubernetesServiceEndpoint:
+  host: "${eks_endpoint}"
+  port: "443"

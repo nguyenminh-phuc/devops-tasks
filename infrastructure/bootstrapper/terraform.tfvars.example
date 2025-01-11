@@ -1,0 +1,3 @@
+region      = "ap-southeast-1"
+s3_tf       = "agileops-tf-states"
+dynamodb_tf = "tf-locks"

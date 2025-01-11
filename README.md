@@ -38,7 +38,10 @@ This task can be divided into 2 main subtasks:
 1. Establishing a Site-to-Site VPN Connection: Configure a secure connection between the on-prem environment and AWS.
 2. Setting up the Hybrid EKS Cluster: Deploy the EKS cluster and integrate the on-prem worker nodes.
 
-#### Site-to-Site VPN
+#### ~~Site-to-Site VPN (Option 1)~~
+
+<details>
+  <summary>Since the on-premise site doesn't support this option, we can use a Mesh VPN as detailed below as an alternative.</summary>
 
 We can simplify the original network diagram to the following:
 
@@ -55,6 +58,20 @@ The following checklist outlines the steps to establish the connection:
 
 Refers to [https://docs.aws.amazon.com/vpn/latest/s2svpn/SetUpVPNConnections.html](https://docs.aws.amazon.com/vpn/latest/s2svpn/SetUpVPNConnections.html) for details.
 
+</details>
+
+#### Mesh VPN (Option 2)
+
+Several solutions support full mesh VPNs including Nebula and Tailscale etc., for this task, we'll use Netmaker which is often considered a "good" choice. One EC2 instance with a public IP will act as a gateway between the on-prem network and the EKS internal VPC, securing connections with WireGuard.
+
+![Mesh VPN](assets/mesh-vpn.png)
+
+Three key considerations:
+
+1. EKS VPC: Enable the DHCP options with the DNS server set as `AmazonProvidedDNS`. This configuration enables the resolution of domain names to private VPC IP addresses instead of public IPs.
+2. Netmaker EC2 instance: Disable the source/destination check on the EC2 instance as it will function as a gateway.
+3. On-prem firewall: Configure the on-prem firewall to support Hairpin NAT and Full Cone NAT. Netmaker utilizes STUN to establish direct P2P connections for a full mesh. If the firewall uses Symmetric NAT, Netmaker will be unable to create peer connections.
+
 #### EKS Hybrid Cluster
 
 The following checklist outlines the steps to set up the EKS Auto Mode cluster:
@@ -62,12 +79,12 @@ The following checklist outlines the steps to set up the EKS Auto Mode cluster:
 1. Configure EKS Auto Mode on the AWS side. This will generate an SSM configuration file for worker node authentication.
 2. On each worker node:
 
--   Disable swap abd configure a static IP address.
+-   Disable swap and configure a static IP address.
 -   Disable SELinux or AppArmor if they are enabled.
 -   Install the necessary AWS tools: AWS CLI, SSM Agent and nodeadm.
 -   Run nodeadm commands using the SSM configuration file generated in step 1 to register the node with the EKS cluster.
 
-3. Choose a supported CNI, we will use Calico. See supported versions: [https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html](https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html).
+3. Choose a supported CNI, we will use Calico. Configure it to point the API server endpoint to the correct private IPs. Each on-prem node will have its own allocated pod CIDR. See supported versions: [https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html](https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html).
 4. Install ALB IngressClass, then we can deploy a Ingress to enable external access to pods running on the worker nodes via the ALB.
 
 ![EKS-Hybrid-Cluster](assets/eks.png)
@@ -80,56 +97,100 @@ The implementation details are located in the `infrastructure` folder.
 
 -   Since we're starting from scratch, we'll need to initially provision an S3 bucket for storing Terraform state and a DynamoDB table for state locking.
 
-2. `s2s-vpn` - Configure VPC and Site-to-Site VPN:
+2. ~~`s2s-vpn` - Configure VPC and Site-to-Site VPN:~~
+ <details>
+   <summary>Since the on-premise site doesn't support this option, we can use a Mesh VPN as detailed below as an alternative.</summary>
 
 -   Use the `vpc` and `vpn-gateway` modules to deploy the infra with static routing.
 
-3. Configure Customer Gateway:
-
--   Configure the IPsec connections on the on-prem router, the specific steps will vary depending on the router model. Use the outputs from `s2s-vpn` for configuration.
-
-4. Validate VPN Connection:
-
--   Verify the VPN connection using the following commands ([https://www.trendmicro.com/cloudoneconformity/knowledge-base/aws/VPC/vpn-tunnel-up.html](https://www.trendmicro.com/cloudoneconformity/knowledge-base/aws/VPC/vpn-tunnel-up.html)):
+-   Configure Customer Gateway:
+    -   Configure the IPsec connections on the on-prem router, the specific steps will vary depending on the router model. Use the outputs from `s2s-vpn` for configuration.
+-   Validate VPN Connection:
+    -   Verify the VPN connection using the following commands ([https://www.trendmicro.com/cloudoneconformity/knowledge-base/aws/VPC/vpn-tunnel-up.html](https://www.trendmicro.com/cloudoneconformity/knowledge-base/aws/VPC/vpn-tunnel-up.html)):
 
 ```bash
 aws ec2 describe-vpn-connections --filters "Name=state,Values=available" --query 'VpnConnections[*].VpnConnectionId'
 aws ec2 describe-vpn-connections --vpn-connection-ids <vpn-id> --query 'VpnConnections[*].VgwTelemetry[*].Status[]'
 ```
 
-5. `eks-hyrid` - Configure EKS Cluster (Auto Mode):
+</details>
+
+3. `mesh-vpn` - Configure VPC and Mesh VPN:
+
+-   EC2 node (Netmaker server):
+
+    -   Downgrade Netmaker version, the latest version v0.30.0 currently has known issues, it's recommended to downgrade to v0.26.0. Open `/root/nm-quick.sh` and change `LATEST` to `LATEST="v0.26.0"`, execute `sudo /root/nm-quick.sh`.
+    -   After a successful installation, we'll receive a public dashboard endpoint: `dashboard.nm.<ec2-ip>.nip.io`.
+    -   Create a new mesh within the dashboard and retrieve the enrollment key, it will be in the format: `netclient join -t <token>`.
+
+-   On-prem nodes (Netclient):
+
+    -   On each on-premise node, install the Netclient ensuring version compatibility (v0.26.0) with the Netmaker server:
+
+```bash
+curl -sL 'https://apt.netmaker.org/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/netmaker-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/netmaker-keyring.gpg] https://apt.netmaker.org stable main" | sudo tee /etc/apt/sources.list.d/netclient.list
+sudo apt update && sudo apt install netclient -y
+sudo netclient use v0.26.0
+sudo netclient join -t <token>
+```
+
+-   In the Netmaker dashboard, create egresses within the new mesh:
+
+    -   EC2 gateway: configure an egress that points to the EKS subnet.
+    -   For each on-prem gateway, configure:
+        -   An route pointing to its private on-prem IP address.
+        -   An route pointing to the allocated pod CIDR for that node as defined in the specifications.
+
+-   This setup should result in a fully connected mesh graph similar to the one illustrated below:
+
+![Netmaker graph](assets/netmaker-graph.jpg)
+
+-   Netmaker lacks fine-grained control over route learning which can lead to communication issues between on-prem nodes, to address this, manually remove conflicting routes after the mesh is established. Ideally, these commands should be executed after each server restart and once the Netmaker service has fully initialized. Example script to run, adapt the IPs and CIDRs accordingly to the environment:
+
+```bash
+# Example for node 1: Replace with the correct IP addresses and CIDRs for each node.
+sudo ip route delete <node2-privateIP> via <node2-meshIP> dev netmaker src <node1-meshIP> metric 256
+sudo ip route delete <node2-podCIDR> via <node2-meshIP> dev netmaker src <node1-meshIP> metric 256
+sudo ip route delete <node3-privateIP> via <node3-meshIP> dev netmaker src <node1-meshIP> metric 256
+sudo ip route delete <node3-podCIDR> via <node3-meshIP> dev netmaker src <node1-meshIP> metric 256
+...
+```
+
+4. `eks-hyrid` - Configure EKS Cluster (Auto Mode):
 
 -   Use the `eks` module. In the `cluster_compute_config` section, set `node_pools` to `general-purpose` to configure the cluster in Auto Mode.
 -   Obtain the `kubeconfig` file using:
 
 ```bash
-aws eks update-kubeconfig --name <cluster-name>
+aws eks update-kubeconfig --name eks-hybrid
 ```
 
-6. Configure Worker Nodes:
+5. Configure Worker Nodes:
 
 -   Install the hybrid node version of `nodeadm` on each worker node ([https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-nodeadm.html](https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-nodeadm.html)).
--   EC2 worker nodes running Amazon Linux have their own version of [`nodeadm`](https://awslabs.github.io/amazon-eks-ami/nodeadm/), use this specific version for configuration instead of the one intended for hybrid nodes.
 -   Run the following commands to register the node with the EKS cluster:
 
 ```bash
-nodeadm install <eks-version> --credential-provider ssm
-nodeadm init --config-source file://<path-to-nodeConfig.yaml>
+sudo nodeadm install 1.31 --credential-provider ssm
+sudo nodeadm init --config-source file://nodeConfig.yaml
 ```
 
-7. Validate Worker Nodes:
+6. Validate Worker Nodes:
 
 ```bash
-nodeadm debug --config-source file://<path-to-nodeConfig.yaml>
+sudo nodeadm debug --config-source file://nodeConfig.yaml
 ```
 
-8. `eks-hybrid-cni` - Configure Calico and ALB:
+7. `eks-hybrid-cni` - Configure Calico and ALB:
 
 -   Deploy Calico as the CNI and then install the ALB IngressClass.
 
 ### 4. Testing and Maintenance
 
 Deploy `tests/eks-app.yaml`, the web application should be accessible from the internet.
+
+![ALB](assets/alb.jpg)
 
 Refer to the [official documentation](https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-troubleshooting.html) for troubleshooting hybrid nodes.
 

@@ -10,7 +10,7 @@ output "eks_version" {
 
 output "eks_pod_subnet" {
   description = "CIDR block for the pod network"
-  value       = var.customer_pod_subnet
+  value       = local.eks_pod_subnet
 }
 
 output "ssm_activation_id" {
@@ -25,7 +25,29 @@ output "ssm_activation_code" {
   sensitive   = true
 }
 
-output "hybrid_config" {
+output "eks_config" {
   description = "Full path to the generated nodeConfig.yaml file"
-  value       = abspath(local_file.hybrid_config.filename)
+  value       = abspath(local_file.eks_config.filename)
+}
+
+data "aws_network_interfaces" "eks" {
+  filter {
+    # https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeNetworkInterfaces.html
+    name   = "group-id"
+    values = [module.eks.cluster_security_group_id]
+  }
+
+  depends_on = [module.eks.time_sleep]
+}
+
+data "aws_network_interface" "eks" {
+  count = 2
+  id    = data.aws_network_interfaces.eks.ids[count.index]
+}
+
+output "eks_private_ips" {
+  description = "EKS private endpoints"
+  value = flatten([
+    for interface in data.aws_network_interface.eks : interface.private_ips
+  ])
 }

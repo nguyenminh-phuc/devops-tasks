@@ -1,0 +1,12 @@
+region             = "ap-southeast-1"
+availability_zones = ["ap-southeast-1a", "ap-southeast-1b"]
+
+vpc_subnet          = "10.226.0.0/16"
+vpc_public_subnets  = ["10.226.1.0/24", "10.226.4.0/24"]
+vpc_private_subnets = ["10.226.2.0/24", "10.226.3.0/24"]
+
+node_subnet = "10.80.0.0/16"
+pod_subnet  = "10.85.0.0/16"
+
+netmaker_ami = "ami-03fa85deedfcac80b" # ubuntu 22.04
+netmaker_key = "netmaker"

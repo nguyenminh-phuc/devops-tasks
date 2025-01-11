@@ -1,0 +1,13 @@
+region = "ap-southeast-1"
+
+s3_tf_bucket      = "agileops-tf-states"
+s3_eks_hybrid_key = "eks-hybrid/terraform.tfstate"
+
+calico_namespace = "tigera-operator"
+calico_version   = "3.29.1"
+
+pod_subnets = {
+  "agileops/hostname == \"node1\"" = "10.85.1.0/24"
+  "agileops/hostname == \"node2\"" = "10.85.2.0/24"
+  "agileops/hostname == \"node3\"" = "10.85.3.0/24"
+}
